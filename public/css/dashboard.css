@@ -390,3 +390,85 @@
   font-size: 1rem;
   color: #333;
 }
+
+/* Ask Emiri button */
+.ask-emiri-btn {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 15px;
+  background: #000;
+  color: #ffbc11;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ask-emiri-btn:hover {
+  background: #222;
+}
+
+/* Interest sections on dashboard */
+#interestSections {
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+.interest-section {
+  margin-bottom: 1.5rem;
+}
+
+.interest-heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 0.6rem;
+  text-transform: capitalize;
+}
+
+.dash-loading {
+  font-size: 0.9rem;
+  color: #666;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: #999;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.typing-text {
+  margin-right: 0.1rem;
+}
+
+.typing-dots span {
+  animation: typingDot 1.4s infinite;
+  opacity: 0;
+}
+
+.typing-dots span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingDot {
+  0%, 20% { opacity: 0; }
+  40% { opacity: 1; }
+  60%, 100% { opacity: 0; }
+}

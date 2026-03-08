@@ -56,7 +56,9 @@ initTTS().catch(err => {
 async function generateTTSAudio(text) {
   if (!tts) return null;
   try {
-    const audio = await tts.generate(text, { voice: 'af_heart' });
+    // Phonetic spelling so TTS pronounces "Emiri" as "eh-MIH-ree"
+    const ttsText = text.replace(/Emiri/gi, 'Emiry');
+    const audio = await tts.generate(ttsText, { voice: 'af_heart' });
     const filename = 'emiri-' + Date.now() + '.wav';
     const filepath = path.join(AUDIO_DIR, filename);
     await audio.save(filepath);
@@ -290,13 +292,13 @@ app.post('/api/login', async (req, res) => {
     let step = 'livingSituation';
     const d = user.onboardingData || {};
     if (d.livingSituation && !d.neighborhood) step = 'neighborhood';
-    else if (d.livingSituation && d.neighborhood && !d.interests) step = 'interests';
+    else if (d.livingSituation && d.neighborhood) step = 'interests';
     req.session.onboarding = {
       step,
       collectedInterests: (d.interests && d.interests.extracted) || [],
     };
   }
-  res.json({ success: true });
+  res.json({ success: true, onboardingComplete: user.onboardingComplete });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -320,6 +322,18 @@ app.get('/api/me', (req, res) => {
   });
 });
 
+// Get venue cards for a single interest
+app.get('/api/interests/venues', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Not logged in' });
+  }
+  const { interest } = req.query;
+  if (!interest) return res.status(400).json({ error: 'Interest required' });
+
+  const venues = await findMiamiVenues(interest);
+  res.json({ interest, venues });
+});
+
 // Get the initial Emiri message for the current onboarding step
 app.get('/api/onboarding/start', async (req, res) => {
   if (!req.session.user) {
@@ -335,7 +349,7 @@ app.get('/api/onboarding/start', async (req, res) => {
     let step = 'livingSituation';
     const d = user.onboardingData || {};
     if (d.livingSituation && !d.neighborhood) step = 'neighborhood';
-    else if (d.livingSituation && d.neighborhood && !d.interests) step = 'interests';
+    else if (d.livingSituation && d.neighborhood) step = 'interests';
     req.session.onboarding = {
       step,
       collectedInterests: (d.interests && d.interests.extracted) || [],
@@ -408,6 +422,10 @@ app.post('/api/onboarding/chat', async (req, res) => {
       ob.currentInterest = null;
       ob.subStep = null;
 
+      // Always persist interests so they're saved even if onboarding isn't completed
+      user.onboardingData.interests = { extracted: ob.collectedInterests };
+      updateUser(user.id, { onboardingData: user.onboardingData });
+
       // More pending interests to show?
       if (ob.pendingInterests && ob.pendingInterests.length > 0) {
         const next = ob.pendingInterests.shift();
@@ -468,7 +486,7 @@ app.post('/api/onboarding/chat', async (req, res) => {
 // Homepage (login/signup page)
 app.get('/', (req, res) => {
   if (req.session && req.session.user) {
-    return res.redirect('/onboarding');
+    return res.redirect(req.session.user.onboardingComplete ? '/dashboard' : '/onboarding');
   }
   res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
@@ -482,6 +500,22 @@ app.get('/terms', (req, res) => {
 app.get('/onboarding', (req, res) => {
   if (!req.session || !req.session.user) {
     return res.redirect('/');
+  }
+  // If onboarding is done, redirect to dashboard
+  if (req.session.user.onboardingComplete) {
+    return res.redirect('/dashboard');
+  }
+  res.sendFile(path.join(__dirname, 'views', 'onboarding.html'));
+});
+
+// Dashboard — requires login + completed onboarding
+app.get('/dashboard', (req, res) => {
+  if (!req.session || !req.session.user) {
+    return res.redirect('/');
+  }
+  // If onboarding isn't done, redirect to onboarding
+  if (!req.session.user.onboardingComplete) {
+    return res.redirect('/onboarding');
   }
   res.sendFile(path.join(__dirname, 'views', 'onboarding.html'));
 });

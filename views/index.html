@@ -36,7 +36,7 @@
 
       <p class="field-error hidden" id="loginError"></p>
 
-      <button type="submit" class="btn-submit">Login &rarr;</button>
+      <button type="submit" class="btn-submit" id="loginSubmitBtn">Login &rarr;</button>
 
       <p class="terms">By logging in, you agree to our <a href="/terms" target="_blank">Terms</a> &amp; <a href="/terms" target="_blank">Privacy Policy</a></p>
     </form>
@@ -201,6 +201,20 @@
       el.addEventListener('blur', checkSignupReady);
     });
 
+    // Login button readiness
+    const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+    const loginEmailInput = document.getElementById('loginEmail');
+    const loginPasswordInput = document.getElementById('loginPassword');
+
+    function checkLoginReady() {
+      const hasEmail = loginEmailInput.value.trim().length > 0;
+      const hasPassword = loginPasswordInput.value.length > 0;
+      loginSubmitBtn.classList.toggle('btn-ready', hasEmail && hasPassword);
+    }
+
+    loginEmailInput.addEventListener('input', checkLoginReady);
+    loginPasswordInput.addEventListener('input', checkLoginReady);
+
     // Login submit
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -218,7 +232,7 @@
       const data = await res.json();
 
       if (data.success) {
-        window.location.href = '/onboarding';
+        window.location.href = data.onboardingComplete ? '/dashboard' : '/onboarding';
       } else {
         loginError.textContent = data.error;
         loginError.classList.remove('hidden');

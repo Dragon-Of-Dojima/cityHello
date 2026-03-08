@@ -38,6 +38,8 @@
       <div class="dash-content hidden" id="dashContent">
         <h2 id="welcomeHeading">Welcome!</h2>
         <p class="dash-subtitle">Your CityHello dashboard</p>
+        <button class="ask-emiri-btn" id="askEmiriBtn">Ask Emiri!</button>
+        <div id="interestSections"></div>
       </div>
     </main>
   </div>
@@ -56,7 +58,23 @@
       audio.play().catch(() => {});
     }
 
+    function showTypingIndicator() {
+      removeTypingIndicator();
+      const typing = document.createElement('div');
+      typing.className = 'chat-bubble bot typing-indicator';
+      typing.id = 'typingIndicator';
+      typing.innerHTML = '<span class="typing-text">Emiri is typing</span><span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>';
+      chatMessages.appendChild(typing);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+      const el = document.getElementById('typingIndicator');
+      if (el) el.remove();
+    }
+
     function addBotMessage(text, audioUrl) {
+      removeTypingIndicator();
       const msg = document.createElement('div');
       msg.className = 'chat-bubble bot';
       msg.textContent = text;
@@ -77,6 +95,80 @@
       const d = document.createElement('div');
       d.textContent = str;
       return d.innerHTML;
+    }
+
+    function renderDashboardVenueCards(interest, venues, container) {
+      const section = document.createElement('div');
+      section.className = 'interest-section';
+
+      const heading = document.createElement('h3');
+      heading.className = 'interest-heading';
+      heading.textContent = interest;
+      section.appendChild(heading);
+
+      const cardsWrap = document.createElement('div');
+      cardsWrap.className = 'venue-cards';
+
+      venues.forEach(v => {
+        const card = document.createElement('div');
+        card.className = 'venue-card';
+        const name = v.name || 'Unknown';
+        const category = v.category || '';
+        const tags = v.tags || [];
+        const linkUrl = v.url || ('https://www.google.com/maps/search/' + encodeURIComponent(name + ' ' + (v.address || '')));
+        const imageHtml = v.image
+          ? '<img class="venue-card-img" src="' + esc(v.image) + '" alt="' + esc(name) + '" />'
+          : '<div class="venue-card-placeholder">' + esc(name.charAt(0)) + '</div>';
+        const ratingHtml = v.rating ? '<span class="venue-card-rating">' + esc(String(v.rating)) + ' &#9733;</span>' : '';
+        card.innerHTML =
+          '<div class="venue-card-header">' +
+            '<span class="venue-card-heart">&hearts;</span> ' +
+            '<span>' + esc(v.recommendation || '') + '</span>' +
+          '</div>' +
+          '<div class="venue-card-body">' +
+            '<div class="venue-card-image">' +
+              imageHtml +
+              '<span class="venue-card-type">' + esc(category.toUpperCase()) + '</span>' +
+            '</div>' +
+            '<div class="venue-card-info">' +
+              '<h4>' + esc(name) + '</h4>' +
+              '<div class="venue-card-tags">' + tags.map(t => '<span class="venue-tag">' + esc(t) + '</span>').join('') + ratingHtml + '</div>' +
+              '<p class="venue-card-category">' + esc(category) + '</p>' +
+              '<p class="venue-card-address">' + esc(v.address || '') + '</p>' +
+              '<p class="venue-card-hours">' + esc(v.hours || '') + '</p>' +
+              '<p class="venue-card-desc">' + esc(v.description || '') + '</p>' +
+              '<a class="venue-card-more" href="' + esc(linkUrl) + '" target="_blank">More Info</a>' +
+            '</div>' +
+          '</div>';
+        cardsWrap.appendChild(card);
+      });
+
+      section.appendChild(cardsWrap);
+      container.appendChild(section);
+    }
+
+    async function loadInterestCards(interests) {
+      const container = document.getElementById('interestSections');
+      container.innerHTML = '<p class="dash-loading">Loading your personalized spots...</p>';
+
+      const results = await Promise.all(
+        interests.map(async (interest) => {
+          try {
+            const r = await fetch('/api/interests/venues?interest=' + encodeURIComponent(interest));
+            const data = await r.json();
+            return { interest, venues: data.venues || [] };
+          } catch (e) {
+            return { interest, venues: [] };
+          }
+        })
+      );
+
+      container.innerHTML = '';
+      results.forEach(({ interest, venues }) => {
+        if (venues.length > 0) {
+          renderDashboardVenueCards(interest, venues, container);
+        }
+      });
     }
 
     function renderVenueCards(venues) {
@@ -124,8 +216,7 @@
       if (data.complete) {
         chatInputArea.innerHTML = '';
         setTimeout(() => {
-          chatOverlay.classList.add('hidden');
-          dashContent.classList.remove('hidden');
+          window.location.href = '/dashboard';
         }, 3000);
       } else if (data.showConfirm && data.venues) {
         renderVenueCards(data.venues);
@@ -152,6 +243,7 @@
         yesBtn.disabled = true;
         noBtn.disabled = true;
         addUserMessage(text);
+        showTypingIndicator();
 
         const res = await fetch('/api/onboarding/chat', {
           method: 'POST',
@@ -194,6 +286,7 @@
         sendBtn.textContent = '...';
 
         addUserMessage(val);
+        showTypingIndicator();
 
         const res = await fetch('/api/onboarding/chat', {
           method: 'POST',
@@ -222,12 +315,19 @@
       welcomeHeading.textContent = 'Welcome, ' + user.firstName + '!';
 
       if (user.onboardingComplete) {
-        chatOverlay.classList.add('hidden');
+        chatOverlay.remove();
         dashContent.classList.remove('hidden');
+        const interests = user.onboardingData && user.onboardingData.interests
+          ? user.onboardingData.interests.extracted
+          : [];
+        if (interests.length > 0) {
+          loadInterestCards(interests);
+        }
         return;
       }
 
       // Get initial Emiri message from server
+      showTypingIndicator();
       const startRes = await fetch('/api/onboarding/start');
       const startData = await startRes.json();
 
