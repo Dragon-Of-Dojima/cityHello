@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onboarding - City Hello</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <header class="dash-header">
+      <div class="logo-sm">
+        <span class="logo-icon">&#10070;</span>
+        <span class="logo-text">City<span class="highlight">Hello</span></span>
+      </div>
+      <button class="btn-logout" id="logoutBtn">Logout</button>
+    </header>
+
+    <main class="dash-main">
+      <!-- Onboarding chat overlay -->
+      <div class="chat-overlay" id="chatOverlay">
+        <div class="chat-container">
+          <div class="chat-header">
+            <div class="chat-avatar">E</div>
+            <div>
+              <strong>Emiri</strong>
+              <p class="chat-subtitle">Your CityHello assistant</p>
+            </div>
+          </div>
+          <div class="chat-messages" id="chatMessages"></div>
+          <div class="chat-input-area" id="chatInputArea"></div>
+        </div>
+      </div>
+
+      <!-- Dashboard content (shown after onboarding) -->
+      <div class="dash-content hidden" id="dashContent">
+        <h2 id="welcomeHeading">Welcome!</h2>
+        <p class="dash-subtitle">Your CityHello dashboard</p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const chatOverlay = document.getElementById('chatOverlay');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInputArea = document.getElementById('chatInputArea');
+    const dashContent = document.getElementById('dashContent');
+    const welcomeHeading = document.getElementById('welcomeHeading');
+
+    // Play audio from server-generated URL
+    function playAudio(url) {
+      if (!url) return;
+      const audio = new Audio(url);
+      audio.play().catch(() => {});
+    }
+
+    function addBotMessage(text, audioUrl) {
+      const msg = document.createElement('div');
+      msg.className = 'chat-bubble bot';
+      msg.textContent = text;
+      chatMessages.appendChild(msg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      playAudio(audioUrl);
+    }
+
+    function addUserMessage(text) {
+      const msg = document.createElement('div');
+      msg.className = 'chat-bubble user';
+      msg.textContent = text;
+      chatMessages.appendChild(msg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function esc(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    function renderVenueCards(venues) {
+      const container = document.createElement('div');
+      container.className = 'venue-cards';
+
+      venues.forEach(v => {
+        const card = document.createElement('div');
+        card.className = 'venue-card';
+        const linkUrl = v.url || ('https://www.google.com/maps/search/' + encodeURIComponent(v.name + ' ' + v.address));
+        const imageHtml = v.image
+          ? '<img class="venue-card-img" src="' + esc(v.image) + '" alt="' + esc(v.name) + '" />'
+          : '<div class="venue-card-placeholder">' + esc(v.name.charAt(0)) + '</div>';
+        const ratingHtml = v.rating ? '<span class="venue-card-rating">' + esc(String(v.rating)) + ' &#9733;</span>' : '';
+        card.innerHTML =
+          '<div class="venue-card-header">' +
+            '<span class="venue-card-heart">&hearts;</span> ' +
+            '<span>' + esc(v.recommendation) + '</span>' +
+          '</div>' +
+          '<div class="venue-card-body">' +
+            '<div class="venue-card-image">' +
+              imageHtml +
+              '<span class="venue-card-type">' + esc(v.category.toUpperCase()) + '</span>' +
+            '</div>' +
+            '<div class="venue-card-info">' +
+              '<h4>' + esc(v.name) + '</h4>' +
+              '<div class="venue-card-tags">' + v.tags.map(t => '<span class="venue-tag">' + esc(t) + '</span>').join('') + ratingHtml + '</div>' +
+              '<p class="venue-card-category">' + esc(v.category) + '</p>' +
+              '<p class="venue-card-address">' + esc(v.address) + '</p>' +
+              '<p class="venue-card-hours">' + esc(v.hours) + '</p>' +
+              '<p class="venue-card-desc">' + esc(v.description) + '</p>' +
+              '<a class="venue-card-more" href="' + esc(linkUrl) + '" target="_blank">More Info</a>' +
+            '</div>' +
+          '</div>';
+        container.appendChild(card);
+      });
+
+      chatMessages.appendChild(container);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function handleChatResponse(data) {
+      addBotMessage(data.reply, data.audioUrl);
+
+      if (data.complete) {
+        chatInputArea.innerHTML = '';
+        setTimeout(() => {
+          chatOverlay.classList.add('hidden');
+          dashContent.classList.remove('hidden');
+        }, 3000);
+      } else if (data.showConfirm && data.venues) {
+        renderVenueCards(data.venues);
+        showConfirmButtons();
+      } else {
+        showTextInput();
+      }
+    }
+
+    function showConfirmButtons() {
+      chatInputArea.innerHTML = '';
+      const wrapper = document.createElement('div');
+      wrapper.className = 'confirm-buttons';
+
+      const yesBtn = document.createElement('button');
+      yesBtn.className = 'confirm-btn confirm-yes';
+      yesBtn.textContent = "Yes, that's what I meant";
+
+      const noBtn = document.createElement('button');
+      noBtn.className = 'confirm-btn confirm-no';
+      noBtn.textContent = 'No';
+
+      async function handleConfirm(text) {
+        yesBtn.disabled = true;
+        noBtn.disabled = true;
+        addUserMessage(text);
+
+        const res = await fetch('/api/onboarding/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        });
+        const data = await res.json();
+        setTimeout(() => handleChatResponse(data), 400);
+      }
+
+      yesBtn.addEventListener('click', () => handleConfirm("Yes, that's what I meant"));
+      noBtn.addEventListener('click', () => handleConfirm('No'));
+
+      wrapper.appendChild(yesBtn);
+      wrapper.appendChild(noBtn);
+      chatInputArea.appendChild(wrapper);
+    }
+
+    function showTextInput() {
+      chatInputArea.innerHTML = '';
+      const wrapper = document.createElement('div');
+      wrapper.className = 'chat-input-wrapper';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'chat-text-input';
+      input.placeholder = 'Type your answer...';
+
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'chat-send-btn';
+      sendBtn.textContent = 'Send';
+
+      async function submit() {
+        const val = input.value.trim();
+        if (!val) return;
+
+        // Disable input while processing
+        input.disabled = true;
+        sendBtn.disabled = true;
+        sendBtn.textContent = '...';
+
+        addUserMessage(val);
+
+        const res = await fetch('/api/onboarding/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: val }),
+        });
+        const data = await res.json();
+
+        setTimeout(() => handleChatResponse(data), 400);
+      }
+
+      sendBtn.addEventListener('click', submit);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submit();
+      });
+
+      wrapper.appendChild(input);
+      wrapper.appendChild(sendBtn);
+      chatInputArea.appendChild(wrapper);
+      input.focus();
+    }
+
+    async function init() {
+      const meRes = await fetch('/api/me');
+      const user = await meRes.json();
+      welcomeHeading.textContent = 'Welcome, ' + user.firstName + '!';
+
+      if (user.onboardingComplete) {
+        chatOverlay.classList.add('hidden');
+        dashContent.classList.remove('hidden');
+        return;
+      }
+
+      // Get initial Emiri message from server
+      const startRes = await fetch('/api/onboarding/start');
+      const startData = await startRes.json();
+
+      if (startData.complete) {
+        chatOverlay.classList.add('hidden');
+        dashContent.classList.remove('hidden');
+        return;
+      }
+
+      addBotMessage(startData.message, startData.audioUrl);
+      showTextInput();
+    }
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/';
+    });
+
+    init();
+  </script>
+</body>
+</html>

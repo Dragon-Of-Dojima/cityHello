@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>City Hello</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <main>
+    <div class="logo">
+      <span class="logo-icon">&#10070;</span>
+      <h1>City<span class="highlight">Hello</span></h1>
+    </div>
+    <p class="tagline">Discover Miami like never before</p>
+
+    <!-- Toggle -->
+    <div class="toggle">
+      <button class="toggle-btn active" id="loginTab">Login</button>
+      <button class="toggle-btn" id="signupTab">Sign Up</button>
+    </div>
+
+    <!-- Login Form -->
+    <form class="form" id="loginForm">
+      <label for="loginEmail">Email</label>
+      <input type="email" id="loginEmail" placeholder="your@email.com" />
+
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" />
+
+      <div class="remember">
+        <input type="checkbox" id="remember" />
+        <label for="remember">Remember me for 30 days</label>
+      </div>
+
+      <p class="field-error hidden" id="loginError"></p>
+
+      <button type="submit" class="btn-submit">Login &rarr;</button>
+
+      <p class="terms">By logging in, you agree to our <a href="/terms" target="_blank">Terms</a> &amp; <a href="/terms" target="_blank">Privacy Policy</a></p>
+    </form>
+
+    <!-- Sign Up Form -->
+    <form class="form hidden" id="signupForm">
+      <label for="firstName">First Name</label>
+      <input type="text" id="firstName" placeholder="First name" />
+
+      <label for="lastName">Last Name</label>
+      <input type="text" id="lastName" placeholder="Last name" />
+
+      <label for="phone">Phone Number</label>
+      <div class="phone-wrapper">
+        <select id="countryCode" class="country-code">
+          <option value="+1" selected>+1</option>
+          <option value="+44">+44</option>
+          <option value="+33">+33</option>
+          <option value="+49">+49</option>
+          <option value="+81">+81</option>
+          <option value="+86">+86</option>
+          <option value="+91">+91</option>
+          <option value="+52">+52</option>
+          <option value="+55">+55</option>
+          <option value="+61">+61</option>
+          <option value="+82">+82</option>
+          <option value="+39">+39</option>
+          <option value="+34">+34</option>
+          <option value="+7">+7</option>
+          <option value="+971">+971</option>
+          <option value="+234">+234</option>
+          <option value="+254">+254</option>
+          <option value="+27">+27</option>
+          <option value="+63">+63</option>
+          <option value="+84">+84</option>
+        </select>
+        <input type="tel" id="phone" placeholder="Phone number" />
+      </div>
+      <p class="field-error hidden" id="phoneError">Please enter a valid 10-digit phone number</p>
+
+      <label for="signupEmail">Email</label>
+      <input type="email" id="signupEmail" placeholder="your@email.com" />
+      <p class="field-error hidden" id="emailError">Please enter a valid email address</p>
+
+      <label for="signupPassword">Password</label>
+      <div class="password-wrapper">
+        <input type="password" id="signupPassword" placeholder="Password" />
+        <button type="button" class="toggle-password" data-target="signupPassword">Show</button>
+      </div>
+      <p class="field-error hidden" id="passwordError">Password must be at least 10 characters, with one uppercase letter and one special symbol</p>
+
+      <label for="confirmPassword">Confirm Password</label>
+      <div class="password-wrapper">
+        <input type="password" id="confirmPassword" placeholder="Confirm password" />
+        <button type="button" class="toggle-password" data-target="confirmPassword">Show</button>
+      </div>
+      <p class="field-error hidden" id="confirmError">Passwords do not match</p>
+
+      <p class="field-error hidden" id="signupError"></p>
+
+      <button type="submit" class="btn-submit" id="signupSubmitBtn">Create Account &rarr;</button>
+
+      <p class="terms">By signing up, you agree to our <a href="/terms" target="_blank">Terms</a> &amp; <a href="/terms" target="_blank">Privacy Policy</a></p>
+    </form>
+  </main>
+
+  <script>
+    const loginTab = document.getElementById('loginTab');
+    const signupTab = document.getElementById('signupTab');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+
+    loginTab.addEventListener('click', () => {
+      loginTab.classList.add('active');
+      signupTab.classList.remove('active');
+      loginForm.classList.remove('hidden');
+      signupForm.classList.add('hidden');
+    });
+
+    signupTab.addEventListener('click', () => {
+      signupTab.classList.add('active');
+      loginTab.classList.remove('active');
+      signupForm.classList.remove('hidden');
+      loginForm.classList.add('hidden');
+    });
+
+    // Password visibility toggles
+    document.querySelectorAll('.toggle-password').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        btn.textContent = isHidden ? 'Hide' : 'Show';
+      });
+    });
+
+    // Validation helpers
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailInput = document.getElementById('signupEmail');
+    const passwordInput = document.getElementById('signupPassword');
+    const confirmInput = document.getElementById('confirmPassword');
+    const phoneInput = document.getElementById('phone');
+    const emailError = document.getElementById('emailError');
+    const passwordError = document.getElementById('passwordError');
+    const confirmError = document.getElementById('confirmError');
+    const phoneError = document.getElementById('phoneError');
+
+    // Toggle error and has-error class on the input or its parent wrapper
+    function setError(input, errorEl, show) {
+      const target = input.closest('.password-wrapper') || input.closest('.phone-wrapper') || input;
+      errorEl.classList.toggle('hidden', !show);
+      target.classList.toggle('has-error', show);
+    }
+
+    // Strip non-digits on phone input
+    phoneInput.addEventListener('input', () => {
+      phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 10);
+    });
+
+    // Live warnings
+    emailInput.addEventListener('blur', () => {
+      const showErr = emailInput.value && !emailPattern.test(emailInput.value);
+      setError(emailInput, emailError, showErr);
+    });
+
+    passwordInput.addEventListener('input', () => {
+      const val = passwordInput.value;
+      const ok = val.length >= 10 && /[A-Z]/.test(val) && /[^A-Za-z0-9]/.test(val);
+      setError(passwordInput, passwordError, val && !ok);
+    });
+
+    confirmInput.addEventListener('input', () => {
+      setError(confirmInput, confirmError, confirmInput.value && confirmInput.value !== passwordInput.value);
+    });
+
+    phoneInput.addEventListener('blur', () => {
+      const digits = phoneInput.value.replace(/\D/g, '');
+      setError(phoneInput, phoneError, phoneInput.value && digits.length !== 10);
+    });
+
+    // Signup button readiness
+    const signupSubmitBtn = document.getElementById('signupSubmitBtn');
+    const firstNameInput = document.getElementById('firstName');
+    const lastNameInput = document.getElementById('lastName');
+
+    function checkSignupReady() {
+      const hasFirst = firstNameInput.value.trim().length > 0;
+      const hasLast = lastNameInput.value.trim().length > 0;
+      const phoneDigits = phoneInput.value.replace(/\D/g, '');
+      const hasPhone = phoneDigits.length === 10;
+      const hasEmail = emailPattern.test(emailInput.value);
+      const passVal = passwordInput.value;
+      const hasPass = passVal.length >= 10 && /[A-Z]/.test(passVal) && /[^A-Za-z0-9]/.test(passVal);
+      const hasConfirm = passVal === confirmInput.value && confirmInput.value.length > 0;
+
+      const ready = hasFirst && hasLast && hasPhone && hasEmail && hasPass && hasConfirm;
+      signupSubmitBtn.classList.toggle('btn-ready', ready);
+    }
+
+    [firstNameInput, lastNameInput, phoneInput, emailInput, passwordInput, confirmInput].forEach(el => {
+      el.addEventListener('input', checkSignupReady);
+      el.addEventListener('blur', checkSignupReady);
+    });
+
+    // Login submit
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const loginError = document.getElementById('loginError');
+      loginError.classList.add('hidden');
+
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        window.location.href = '/onboarding';
+      } else {
+        loginError.textContent = data.error;
+        loginError.classList.remove('hidden');
+      }
+    });
+
+    // Signup submit validation
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      let valid = true;
+      const signupError = document.getElementById('signupError');
+      signupError.classList.add('hidden');
+
+      // Reset errors
+      setError(emailInput, emailError, false);
+      setError(passwordInput, passwordError, false);
+      setError(confirmInput, confirmError, false);
+      setError(phoneInput, phoneError, false);
+
+      // Email
+      if (!emailPattern.test(emailInput.value)) {
+        setError(emailInput, emailError, true);
+        valid = false;
+      }
+
+      // Phone: exactly 10 digits
+      const digits = phoneInput.value.replace(/\D/g, '');
+      if (digits.length !== 10) {
+        setError(phoneInput, phoneError, true);
+        valid = false;
+      }
+
+      // Password: 10+ chars, 1 uppercase, 1 special symbol
+      const val = passwordInput.value;
+      if (val.length < 10 || !/[A-Z]/.test(val) || !/[^A-Za-z0-9]/.test(val)) {
+        setError(passwordInput, passwordError, true);
+        valid = false;
+      }
+
+      // Confirm match
+      if (val !== confirmInput.value) {
+        setError(confirmInput, confirmError, true);
+        valid = false;
+      }
+
+      if (!valid) return;
+
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: document.getElementById('firstName').value,
+          lastName: document.getElementById('lastName').value,
+          phone: phoneInput.value,
+          countryCode: document.getElementById('countryCode').value,
+          email: emailInput.value,
+          password: val,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        window.location.href = '/onboarding';
+      } else {
+        signupError.textContent = data.error;
+        signupError.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
