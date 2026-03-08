@@ -179,13 +179,19 @@ async function fetchFoursquarePhoto(venueName) {
   }
 }
 
-async function findMiamiVenues(interest) {
+async function findMiamiVenues(interest, neighborhood) {
   // Claude generates real Miami venues
+  const locationContext = neighborhood
+    ? `The user lives in/near: ${neighborhood}. First, determine the zip code for this area. Then prioritize venues within a 10-mile radius of that location, ordered nearest first. Only if fewer than 3 results exist within 10 miles, include venues further away to reach 3 total.`
+    : '';
+
   try {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 1500,
       system: `You are a Miami city guide database. Given a user interest, return exactly 3 real, existing venues, events, or experiences in Miami-Dade County related to that interest.
+
+${locationContext}
 
 Return a JSON array with exactly 3 objects, each having:
 - name: string (real venue/event name that actually exists)
@@ -195,6 +201,7 @@ Return a JSON array with exactly 3 objects, each having:
 - tags: array of 2-3 lowercase short tags
 - address: string (real street address)
 - hours: string (typical hours, e.g. "Daily 8am-10pm" or "Varies by event")
+- distanceMiles: number (approximate distance in miles from the user's location)
 
 CRITICAL: Every venue must be a REAL place that exists in Miami. Do not invent fictional places.
 Return ONLY valid JSON, nothing else.`,
@@ -330,7 +337,9 @@ app.get('/api/interests/venues', async (req, res) => {
   const { interest } = req.query;
   if (!interest) return res.status(400).json({ error: 'Interest required' });
 
-  const venues = await findMiamiVenues(interest);
+  const user = getUser(req.session.user.id);
+  const neighborhood = user && user.onboardingData ? user.onboardingData.neighborhood : null;
+  const venues = await findMiamiVenues(interest, neighborhood);
   res.json({ interest, venues });
 });
 
@@ -433,7 +442,7 @@ app.post('/api/onboarding/chat', async (req, res) => {
         ob.subStep = 'confirm';
         req.session.onboarding = ob;
 
-        const venues = await findMiamiVenues(next);
+        const venues = await findMiamiVenues(next, user.onboardingData.neighborhood);
         const reply = `And ${next} — here are some spots you might like:`;
         const audioUrl = await generateTTSAudio(reply);
         return res.json({ reply, audioUrl, complete: false, venues, currentInterest: next, showConfirm: true });
@@ -467,7 +476,7 @@ app.post('/api/onboarding/chat', async (req, res) => {
       ob.subStep = 'confirm';
       req.session.onboarding = ob;
 
-      const venues = await findMiamiVenues(first);
+      const venues = await findMiamiVenues(first, user.onboardingData.neighborhood);
       const reply = `Ooh, ${first}! Check these out:`;
       const audioUrl = await generateTTSAudio(reply);
       return res.json({ reply, audioUrl, complete: false, venues, currentInterest: first, showConfirm: true });
